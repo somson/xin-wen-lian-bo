@@ -10,17 +10,84 @@ jobs:
   update:
     name: Update today xin wen lian bo
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # 需要写入权限来提交结果
+    
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
         with:
           node-version: 16
-      - run: npm install
-      - run: npm run index
-      - run: git config --local user.email "github-actions[bot]@github.com"
-      - run: git config --local user.name "github-actions[bot]"
-      - run: git add .
-      - run: git commit -m "AUTO UPDATE [bot]"
+      
+      - name: Install Node.js dependencies
+        run: npm install
+      
+      - name: Fetch news
+        run: npm run index
+        continue-on-error: true  # 如果抓取失败，继续执行分析已有数据
+      
+      - name: Get today's date
+        id: date
+        run: |
+          DATE=$(date +%Y%m%d)
+          echo "date=$DATE" >> $GITHUB_OUTPUT
+          echo "Today's date: $DATE"
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+      
+      - name: Install Python dependencies
+        run: |
+          uv sync
+      
+      - name: Check if news file exists
+        id: check_news
+        run: |
+          if [ -f "news/${{ steps.date.outputs.date }}.md" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "News file exists for date ${{ steps.date.outputs.date }}"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "News file does not exist for date ${{ steps.date.outputs.date }}"
+          fi
+      
+      - name: Analyze news and send Feishu notification
+        id: analyze
+        if: steps.check_news.outputs.exists == 'true'
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_API_BASE_URL: ${{ secrets.OPENAI_API_BASE_URL }}
+          OPENAI_MODEL: ${{ secrets.OPENAI_MODEL || 'gpt-3.5-turbo' }}
+          OPENAI_TIMEOUT: ${{ secrets.OPENAI_TIMEOUT || '300' }}
+          FEISHU_WEBHOOK_URL: ${{ secrets.FEISHU_WEBHOOK_URL }}
+          FEISHU_ENABLED: ${{ secrets.FEISHU_ENABLED || 'true' }}
+        run: |
+          uv run python analyze_news.py analyze --date ${{ steps.date.outputs.date }}
+        continue-on-error: true  # 如果分析失败，继续执行提交
+      
+      - name: Configure git
+        run: |
+          git config --local user.email "github-actions[bot]@github.com"
+          git config --local user.name "github-actions[bot]"
+      
+      - name: Commit changes
+        run: |
+          git add .
+          if ! git diff --staged --quiet; then
+            git commit -m "AUTO UPDATE [bot] - ${{ steps.date.outputs.date }}"
+          else
+            echo "No changes to commit"
+          fi
+      
       - name: Push master changes
         uses: ad-m/github-push-action@master
         with:
