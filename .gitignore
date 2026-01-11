@@ -56,6 +56,3 @@ Thumbs.db
 
 # Project specific
 llm-analysis/.env
-llm-analysis/uv.lock
-results/
-news/analysis/
