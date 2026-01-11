@@ -2,6 +2,19 @@ name: Update today xin wen lian bo
 
 on:
   workflow_dispatch:
+    inputs:
+      skip_fetch:
+        description: 'Skip fetching news (only analyze existing news)'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+      date:
+        description: 'Date to analyze (YYYYMMDD format, leave empty for today)'
+        required: false
+        type: string
   schedule:
     # 东八区 (UTC+8), 所以要-8小时
     - cron: '30 12 * * *'
@@ -17,23 +30,30 @@ jobs:
       - uses: actions/checkout@v3
       
       - name: Setup Node.js
+        if: github.event.inputs.skip_fetch != 'true'
         uses: actions/setup-node@v3
         with:
           node-version: 16
       
       - name: Install Node.js dependencies
+        if: github.event.inputs.skip_fetch != 'true'
         run: npm install
       
       - name: Fetch news
+        if: github.event.inputs.skip_fetch != 'true'
         run: npm run index
         continue-on-error: true  # 如果抓取失败，继续执行分析已有数据
       
-      - name: Get today's date
+      - name: Get date
         id: date
         run: |
-          DATE=$(date +%Y%m%d)
+          if [ -n "${{ github.event.inputs.date }}" ]; then
+            DATE="${{ github.event.inputs.date }}"
+          else
+            DATE=$(date +%Y%m%d)
+          fi
           echo "date=$DATE" >> $GITHUB_OUTPUT
-          echo "Today's date: $DATE"
+          echo "Date to analyze: $DATE"
       
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -71,7 +91,11 @@ jobs:
           FEISHU_WEBHOOK_URL: ${{ secrets.FEISHU_WEBHOOK_URL }}
           FEISHU_ENABLED: ${{ secrets.FEISHU_ENABLED || 'true' }}
         run: |
-          uv run python analyze_news.py analyze --date ${{ steps.date.outputs.date }}
+          if [ "${{ github.event.inputs.skip_fetch }}" = "true" ]; then
+            uv run python analyze_news.py analyze --date ${{ steps.date.outputs.date }} --force
+          else
+            uv run python analyze_news.py analyze --date ${{ steps.date.outputs.date }}
+          fi
         continue-on-error: true  # 如果分析失败，继续执行提交
       
       - name: Configure git
@@ -80,8 +104,9 @@ jobs:
           git config --local user.name "github-actions[bot]"
       
       - name: Commit changes
+        if: steps.check_news.outputs.exists == 'true'
         run: |
-          git add .
+          git add news/analysis/ results/ news/*.md news/catalogue.json README.md || true
           if ! git diff --staged --quiet; then
             git commit -m "AUTO UPDATE [bot] - ${{ steps.date.outputs.date }}"
           else
@@ -89,6 +114,7 @@ jobs:
           fi
       
       - name: Push master changes
+        if: steps.check_news.outputs.exists == 'true'
         uses: ad-m/github-push-action@master
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}

@@ -3,6 +3,8 @@
 import json
 from typing import Optional
 
+from pydantic import ValidationError
+
 from .llm_client import LLMClient
 from ..models.sentiment import MarketSentiment
 from ..utils.logger import logger
@@ -54,6 +56,12 @@ class SentimentAnalyzer:
             logger.info(f"Sentiment analysis completed: {sentiment.category} ({sentiment.score}/100)")
             return sentiment
             
+        except (ValidationError, ValueError) as e:
+            logger.error(f"Failed to validate sentiment data: {e}")
+            raise
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse LLM response as JSON: {e}")
+            raise
         except Exception as e:
             logger.error(f"Failed to analyze sentiment: {e}")
             raise

@@ -1,7 +1,7 @@
 """Economic trends data model"""
 
-from typing import List
-from pydantic import BaseModel, Field, field_validator
+from typing import List, Any
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class EconomicTrends(BaseModel):
@@ -45,7 +45,9 @@ class EconomicTrends(BaseModel):
             raise ValueError("key_news must contain at least one item")
         return [item.strip() for item in v if item.strip()]
     
-    def model_post_init(self, __context):
+    @model_validator(mode='after')
+    def validate_at_least_one_list(self) -> 'EconomicTrends':
         """Validate that at least one list is non-empty."""
         if not any([self.policies, self.industries, self.indicators]):
             raise ValueError("At least one of policies, industries, or indicators must be non-empty")
+        return self

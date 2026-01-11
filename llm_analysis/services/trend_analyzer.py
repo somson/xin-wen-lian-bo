@@ -3,6 +3,8 @@
 import json
 from typing import Optional
 
+from pydantic import ValidationError
+
 from .llm_client import LLMClient
 from ..models.trend import EconomicTrends
 from ..utils.logger import logger
@@ -59,6 +61,12 @@ class TrendAnalyzer:
             logger.info("Trend analysis completed")
             return trends
             
+        except (ValidationError, ValueError) as e:
+            logger.error(f"Failed to validate trends data: {e}")
+            raise
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse LLM response as JSON: {e}")
+            raise
         except Exception as e:
             logger.error(f"Failed to analyze trends: {e}")
             raise
