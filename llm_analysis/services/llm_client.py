@@ -3,7 +3,7 @@
 import asyncio
 from typing import Optional, Dict, Any
 from openai import AsyncOpenAI
-from openai import APIError, Timeout, RateLimitError
+from openai import APIError, RateLimitError
 
 from ..config import settings
 from ..utils.logger import logger
@@ -92,14 +92,6 @@ class LLMClient:
                     await asyncio.sleep(wait_time)
                 else:
                     raise
-                    
-            except Timeout as e:
-                logger.warning(f"Timeout error, retrying: {e}")
-                if attempt < max_retries - 1:
-                    await asyncio.sleep(1)
-                else:
-                    raise
-                    
             except APIError as e:
                 logger.error(f"OpenAI API error: {e}")
                 if attempt < max_retries - 1:
