@@ -2,7 +2,48 @@
 
 爬取自 [cctv央视网](https://tv.cctv.com/), 包准确!
 
-程序开发指南: [DEVELOP.md](./DEVELOP.md)
+本项目不仅提供新闻联播文字稿的自动抓取，还集成了 **LLM 智能分析功能**，能够自动分析每日新闻内容，提取市场情绪、经济发展趋势，并生成股票投资建议。
+
+## 功能特性
+
+### 📰 新闻抓取
+- 每日自动抓取新闻联播文字稿
+- 保存为 Markdown 格式，便于阅读和检索
+- 自动更新目录索引
+
+### 🤖 LLM 智能分析
+- **市场情绪分析**: 自动识别新闻中的市场情绪（积极/中性/消极），并给出评分（0-100）
+- **经济发展趋势**: 提取政策方向、热点行业、关键指标等经济趋势信息
+- **股票推荐**: 基于分析结果，推荐 3 个 A 股相关头部公司
+- **历史对比**: 支持多日期分析结果对比，追踪趋势变化
+- **飞书通知**: 自动将分析报告发送到飞书群组
+
+### 📊 分析报告
+- 分析结果保存到 `results/` 目录（Markdown 格式）
+- 详细数据保存到 `news/analysis/` 目录（JSON 格式）
+- 支持多种格式导出（JSON、CSV、Markdown）
+
+## 自动化工作流
+
+项目配置了 GitHub Actions 工作流，支持：
+
+- **定时执行**: 每天自动抓取新闻并进行分析（UTC+8 12:30）
+- **手动触发**: 支持手动触发，可选择：
+  - 跳过新闻抓取（仅分析已有新闻）
+  - 指定分析日期
+  - 强制重新分析（当 `skip_fetch=true` 时）
+
+### GitHub Actions 配置
+
+在 GitHub 仓库的 Settings > Secrets 中配置以下密钥：
+
+- `OPENAI_API_KEY`: OpenAI API 密钥
+- `OPENAI_API_BASE_URL`: OpenAI API 基础 URL（可选）
+- `OPENAI_MODEL`: 使用的模型（可选，默认 gpt-3.5-turbo）
+- `OPENAI_TIMEOUT`: API 超时时间（可选，默认 300）
+- `FEISHU_WEBHOOK_URL`: 飞书 Webhook URL
+- `FEISHU_ENABLED`: 是否启用飞书通知（可选，默认 true）
+
 
 ## 文字稿目录: 
 
