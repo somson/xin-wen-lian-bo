@@ -151,7 +151,15 @@ class FeishuNotifier:
                 }
             ]
         })
-        
+
+        # @所有人
+        elements.append({
+            "tag": "div",
+            "text": {
+                "content": "<at id=all></at>",
+                "tag": "lark_md"
+            }
+        })
         # Construct card message
         content = {
             "config": {
